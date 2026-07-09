@@ -418,9 +418,53 @@ const GhostButton = styled.button`
   font-size: 11px;
   letter-spacing: 0.5px;
   cursor: pointer;
+  opacity: ${(p) => (p.disabled ? 0.4 : 1)};
+  cursor: ${(p) => (p.disabled ? "not-allowed" : "pointer")};
   transition: background 0.15s ease, transform 0.1s ease;
-  &:hover { background: ${(p) => p.theme.surface2}; }
-  &:active { transform: scale(0.97); }
+  &:hover { background: ${(p) => (p.disabled ? "transparent" : p.theme.surface2)}; }
+  &:active { transform: ${(p) => (p.disabled ? "none" : "scale(0.97)")}; }
+`;
+
+const ModeRow = styled.div`
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+`;
+
+const ModeBtn = styled.button`
+  flex: 1;
+  padding: 7px 6px;
+  border-radius: 8px;
+  border: 1px solid ${(p) => p.theme.border};
+  background: ${(p) => (p.$active ? p.theme.cyan : "transparent")};
+  color: ${(p) => (p.$active ? (p.theme.name === "dark" ? "#06121a" : "#fff") : p.theme.textDim)};
+  font-family: "Space Mono", monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  &:hover { background: ${(p) => (p.$active ? p.theme.cyan : p.theme.surface2)}; }
+`;
+
+const HistoryList = styled.div`
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+`;
+
+const HistoryBtn = styled.button`
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border-radius: 7px;
+  border: 1px solid ${(p) => (p.$active ? p.theme.amber : p.theme.border)};
+  background: ${(p) => (p.$active ? `${p.theme.amber}22` : p.theme.surface2)};
+  color: ${(p) => p.theme.text};
+  font-family: "Space Mono", monospace;
+  font-size: 10px;
+  cursor: pointer;
+  white-space: nowrap;
 `;
 
 /* ---------- Mixtape music player ---------- */
@@ -519,20 +563,85 @@ function calculateWinner(board) {
   return null;
 }
 
+function emptyIndices(board) {
+  return board.reduce((acc, v, i) => (v ? acc : [...acc, i]), []);
+}
+
+// AI is always "O", human is always "X".
+// minimax explores every remaining line to the end and scores terminal
+// boards: +10 for an O win, -10 for an X win, 0 for a draw, adjusted by
+// depth so the AI prefers to win sooner and lose later.
+function minimax(board, depth, isMaximizing) {
+  const result = calculateWinner(board);
+  if (result) return result.winner === "O" ? 10 - depth : depth - 10;
+  if (board.every(Boolean)) return 0;
+
+  if (isMaximizing) {
+    let best = -Infinity;
+    for (const i of emptyIndices(board)) {
+      board[i] = "O";
+      best = Math.max(best, minimax(board, depth + 1, false));
+      board[i] = null;
+    }
+    return best;
+  } else {
+    let best = Infinity;
+    for (const i of emptyIndices(board)) {
+      board[i] = "X";
+      best = Math.min(best, minimax(board, depth + 1, true));
+      board[i] = null;
+    }
+    return best;
+  }
+}
+
+function getBestMove(board) {
+  let bestScore = -Infinity;
+  let move = null;
+  for (const i of emptyIndices(board)) {
+    board[i] = "O";
+    const score = minimax(board, 0, false);
+    board[i] = null;
+    if (score > bestScore) {
+      bestScore = score;
+      move = i;
+    }
+  }
+  return move;
+}
+
+function getRandomMove(board) {
+  const options = emptyIndices(board);
+  return options[Math.floor(Math.random() * options.length)];
+}
+
+const MODES = [
+  { id: "pvp", label: "2P" },
+  { id: "ai-easy", label: "VS AI · EASY" },
+  { id: "ai-hard", label: "VS AI · HARD" },
+];
+
 /* ============================================================
    GAME
    ============================================================ */
 function Game() {
   const theme = useContext(ThemeContext);
   const sound = useSound();
-  const [board, setBoard] = useState(Array(9).fill(null));
-  const [xIsNext, setXIsNext] = useState(true);
+
+  // history[0] is the empty board; history[n] is the board after move n.
+  const [history, setHistory] = useState([Array(9).fill(null)]);
+  const [currentMove, setCurrentMove] = useState(0);
   const [scores, setScores] = useState({ X: 0, O: 0, D: 0 });
   const [chaseIndex, setChaseIndex] = useState(0);
+  const [mode, setMode] = useState("pvp");
 
+  const board = history[currentMove];
+  const xIsNext = currentMove % 2 === 0;
   const result = calculateWinner(board);
   const isDraw = !result && board.every(Boolean);
   const gameOver = Boolean(result) || isDraw;
+  const isReplaying = currentMove !== history.length - 1;
+  const aiTurn = mode !== "pvp" && !xIsNext && !gameOver && !isReplaying;
 
   useEffect(() => {
     const id = setInterval(() => setChaseIndex((i) => (i + 1) % 6), 260);
@@ -541,6 +650,7 @@ function Game() {
 
   const scoredRef = useRef(false);
   useEffect(() => {
+    if (isReplaying) return;
     if (result && !scoredRef.current) {
       scoredRef.current = true;
       setScores((s) => ({ ...s, [result.winner]: s[result.winner] + 1 }));
@@ -551,20 +661,51 @@ function Game() {
       sound.playDraw();
     }
     // eslint-disable-next-line
-  }, [result, isDraw]);
+  }, [result, isDraw, isReplaying]);
+
+  const makeMove = useCallback(
+    (i) => {
+      setHistory((h) => {
+        const base = h.slice(0, currentMove + 1);
+        const current = base[base.length - 1];
+        if (current[i] || calculateWinner(current)) return h;
+        const next = current.slice();
+        next[i] = currentMove % 2 === 0 ? "X" : "O";
+        return [...base, next];
+      });
+      setCurrentMove((m) => m + 1);
+    },
+    [currentMove]
+  );
 
   const handleClick = (i) => {
-    if (board[i] || gameOver) return;
+    if (board[i] || gameOver || isReplaying || aiTurn) return;
     sound.playClick();
-    const next = board.slice();
-    next[i] = xIsNext ? "X" : "O";
-    setBoard(next);
-    setXIsNext(!xIsNext);
+    makeMove(i);
   };
 
+  // AI's turn: after a short "thinking" delay, play a move.
+  useEffect(() => {
+    if (!aiTurn) return;
+    const timer = setTimeout(() => {
+      const b = board.slice();
+      const move = mode === "ai-hard" ? getBestMove(b) : getRandomMove(b);
+      if (move != null) {
+        sound.playClick();
+        makeMove(move);
+      }
+    }, 450);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line
+  }, [aiTurn, board, mode]);
+
+  const jumpTo = (move) => setCurrentMove(move);
+  const undo = () => currentMove > 0 && setCurrentMove((m) => m - 1);
+  const redo = () => currentMove < history.length - 1 && setCurrentMove((m) => m + 1);
+
   const resetRound = () => {
-    setBoard(Array(9).fill(null));
-    setXIsNext(true);
+    setHistory([Array(9).fill(null)]);
+    setCurrentMove(0);
     scoredRef.current = false;
   };
 
@@ -573,11 +714,20 @@ function Game() {
     setScores({ X: 0, O: 0, D: 0 });
   };
 
+  const changeMode = (id) => {
+    setMode(id);
+    resetRound();
+  };
+
   let statusNode;
-  if (result) {
+  if (isReplaying) {
+    statusNode = <>VIEWING MOVE {currentMove}/{history.length - 1}</>;
+  } else if (result) {
     statusNode = <>WINNER: <Highlight $who={result.winner}>{result.winner}</Highlight></>;
   } else if (isDraw) {
     statusNode = <Highlight $who="D">DRAW GAME</Highlight>;
+  } else if (aiTurn) {
+    statusNode = <>AI THINKING…</>;
   } else {
     statusNode = <>TURN: <Highlight $who={xIsNext ? "X" : "O"}>{xIsNext ? "X" : "O"}</Highlight></>;
   }
@@ -605,13 +755,21 @@ function Game() {
         ))}
       </ChaseLights>
 
+      <ModeRow>
+        {MODES.map((m) => (
+          <ModeBtn key={m.id} $active={mode === m.id} onClick={() => changeMode(m.id)}>
+            {m.label}
+          </ModeBtn>
+        ))}
+      </ModeRow>
+
       <Screen>
         <Board>
           {board.map((val, i) => (
             <Cell
               key={i}
               $value={val}
-              $gameOver={gameOver}
+              $gameOver={gameOver || isReplaying || aiTurn}
               $win={Boolean(result && result.line.includes(i))}
               onClick={() => handleClick(i)}
               aria-label={`cell-${i}`}
@@ -624,9 +782,23 @@ function Game() {
       </Screen>
 
       <Controls>
+        <GhostButton onClick={undo} disabled={currentMove === 0}>◀ UNDO</GhostButton>
+        <GhostButton onClick={redo} disabled={currentMove === history.length - 1}>REDO ▶</GhostButton>
+      </Controls>
+      <Controls>
         <GhostButton onClick={resetRound}>NEW ROUND</GhostButton>
         <GhostButton onClick={resetAll}>RESET SCORE</GhostButton>
       </Controls>
+
+      {history.length > 1 && (
+        <HistoryList>
+          {history.map((_, move) => (
+            <HistoryBtn key={move} $active={move === currentMove} onClick={() => jumpTo(move)}>
+              {move === 0 ? "START" : `#${move}`}
+            </HistoryBtn>
+          ))}
+        </HistoryList>
+      )}
 
       <MusicPlayer />
     </Cabinet>
