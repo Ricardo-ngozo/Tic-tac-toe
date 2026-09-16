@@ -4,9 +4,84 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>tik-tac-toe</title>
+    <meta name="description" content="Premium Tic-Tac-Toe game with stunning visuals, multiple game modes, and AI opponent. Play classic, timed blitz, or challenge the AI!" />
+    <meta name="theme-color" content="#0a0e1a" />
+    <meta name="keywords" content="tic tac toe, noughts and crosses, game, ai, timed, multiplayer" />
+    <meta property="og:title" content="TIC·TAC·TOE - Premium Gaming Experience" />
+    <meta property="og:description" content="Play the ultimate Tic-Tac-Toe with stunning visuals, multiple modes, and AI!" />
+    <meta property="og:type" content="website" />
+    <title>TIC·TAC·TOE - Premium Gaming Experience</title>
+    <style>
+      /* Loading screen */
+      #loading-screen {
+        position: fixed;
+        inset: 0;
+        background: linear-gradient(135deg, #0a0e1a 0%, #1a0a2e 50%, #0f0e1a 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        font-family: "Press Start 2P", monospace;
+        color: #33e6ff;
+        font-size: 24px;
+        text-shadow: 0 0 20px #33e6ffaa;
+        animation: fadeOut 0.5s ease 1s forwards;
+      }
+      
+      @keyframes fadeOut {
+        to {
+          opacity: 0;
+          pointer-events: none;
+        }
+      }
+      
+      .loader {
+        display: flex;
+        gap: 12px;
+      }
+      
+      .loader span {
+        width: 16px;
+        height: 16px;
+        background: #33e6ff;
+        border-radius: 50%;
+        animation: bounce 0.6s ease-in-out infinite;
+        box-shadow: 0 0 20px #33e6ff;
+      }
+      
+      .loader span:nth-child(1) {
+        animation-delay: 0s;
+      }
+      
+      .loader span:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+      
+      .loader span:nth-child(3) {
+        animation-delay: 0.3s;
+      }
+      
+      @keyframes bounce {
+        0%, 100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-20px);
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="loading-screen">
+      <div>
+        <div style="margin-bottom: 40px; text-align: center;">TIC·TAC·TOE</div>
+        <div class="loader">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
