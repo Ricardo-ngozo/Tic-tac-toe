@@ -353,10 +353,11 @@ function getBestMove(board, player) {
    ============================================================ */
 const AppContainer = styled.div`
   min-height: 100vh;
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 12px;
+  padding: 20px 12px;
   background: ${(p) => p.theme.bg};
   transition: background 0.5s ease;
   position: relative;
@@ -378,10 +379,16 @@ const AppContainer = styled.div`
     0% { transform: translate(0, 0); }
     100% { transform: translate(40px, 40px); }
   }
+  
+  @media (min-height: 800px) {
+    padding: 24px 12px;
+  }
 `;
 
 const Cabinet = styled.div`
   width: min(94vw, 520px);
+  max-height: 95vh;
+  overflow-y: auto;
   background: ${(p) => p.theme.surface};
   border: 3px solid ${(p) => p.theme.border};
   border-radius: 24px;
@@ -404,6 +411,29 @@ const Cabinet = styled.div`
     mask-composite: exclude;
     opacity: 0.5;
     pointer-events: none;
+  }
+  
+  /* Custom scrollbar */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${(p) => p.theme.surface2};
+    border-radius: 0 20px 20px 0;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${(p) => p.theme.border};
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${(p) => p.theme.cyan};
+  }
+  
+  @media (max-height: 700px) {
+    padding: 16px;
   }
 `;
 
@@ -435,6 +465,12 @@ const Marquee = styled.div`
   background: ${(p) => p.theme.gradient};
   border-radius: 12px;
   margin-bottom: 12px;
+  
+  @media (max-height: 700px) {
+    padding: 8px 8px 10px;
+    margin-bottom: 8px;
+    font-size: clamp(10px, 3vw, 14px);
+  }
 `;
 
 const ChaseLights = styled.div`
@@ -442,6 +478,11 @@ const ChaseLights = styled.div`
   justify-content: center;
   gap: 8px;
   margin-bottom: 18px;
+  
+  @media (max-height: 700px) {
+    margin-bottom: 10px;
+    gap: 6px;
+  }
 `;
 
 const Light = styled.span`
@@ -659,6 +700,11 @@ const Mixtape = styled.div`
   background: ${(p) => p.theme.surface2};
   padding: 14px 16px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  
+  @media (max-height: 700px) {
+    margin-top: 12px;
+    padding: 10px 12px;
+  }
 `;
 
 const TapeWindow = styled.div`
@@ -913,6 +959,7 @@ const VictoryOverlay = styled.div`
   justify-content: center;
   z-index: 1000;
   animation: fadeIn 0.3s ease;
+  backdrop-filter: blur(4px);
   
   @keyframes fadeIn {
     from { opacity: 0; }
@@ -927,12 +974,40 @@ const VictoryCard = styled.div`
   padding: 40px;
   text-align: center;
   max-width: 400px;
+  width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
   animation: victorySlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px ${(p) => p.theme.gradient};
+  position: relative;
   
   @keyframes victorySlideIn {
     from { transform: translateY(-100px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
+  }
+  
+  .close-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid ${(p) => p.theme.border};
+    background: ${(p) => p.theme.surface2};
+    color: ${(p) => p.theme.text};
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background: ${(p) => p.theme.cyan};
+      color: ${(p) => p.theme.surface};
+      transform: rotate(90deg);
+    }
   }
   
   .trophy {
@@ -948,7 +1023,7 @@ const VictoryCard = styled.div`
   
   .victory-text {
     font-family: "Press Start 2P", monospace;
-    font-size: 24px;
+    font-size: clamp(18px, 5vw, 24px);
     color: ${(p) => p.theme.cyan};
     margin-bottom: 20px;
     text-shadow: 0 0 20px ${(p) => p.theme.cyan}aa;
@@ -974,6 +1049,39 @@ const VictoryCard = styled.div`
         color: ${(p) => p.theme.text};
         font-weight: bold;
       }
+    }
+  }
+  
+  /* Custom scrollbar for victory card */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${(p) => p.theme.surface2};
+    border-radius: 0 16px 16px 0;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${(p) => p.theme.border};
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${(p) => p.theme.cyan};
+  }
+  
+  @media (max-height: 700px) {
+    padding: 24px;
+    
+    .trophy {
+      font-size: 60px;
+      margin-bottom: 12px;
+    }
+    
+    .stats {
+      margin: 12px 0;
+      padding: 12px;
     }
   }
 `;
@@ -1126,6 +1234,10 @@ function Game() {
     setScreen("game");
   };
   
+  const closeVictory = () => {
+    setScreen("game");
+  };
+  
   const resetAll = () => {
     resetRound();
     setScores({ X: 0, O: 0, D: 0 });
@@ -1257,8 +1369,9 @@ function Game() {
   if (screen === "victory") {
     return (
       <>
-        <VictoryOverlay onClick={resetRound}>
+        <VictoryOverlay>
           <VictoryCard onClick={(e) => e.stopPropagation()}>
+            <button className="close-btn" onClick={closeVictory} aria-label="Back to game">✕</button>
             <div className="trophy">🏆</div>
             <div className="victory-text">
               {result ? `${result.winner === "X" ? player1 : (gameMode === "ai" ? "AI" : player2)} WINS!` : "DRAW!"}
